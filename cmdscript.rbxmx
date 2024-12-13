@@ -1,0 +1,1988 @@
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
+	<External>null</External>
+	<External>nil</External>
+	<Item class="Folder" referent="RBXF4C1394DA14547C080F8A2F0A9C7EDD4">
+		<Properties>
+			<BinaryString name="AttributesSerialize"></BinaryString>
+			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+			<bool name="DefinesCapabilities">false</bool>
+			<string name="Name">cmdscript</string>
+			<int64 name="SourceAssetId">-1</int64>
+			<BinaryString name="Tags"></BinaryString>
+		</Properties>
+		<Item class="Folder" referent="RBXB571C41B09C74C2595BF5F1FF79955E6">
+			<Properties>
+				<BinaryString name="AttributesSerialize"></BinaryString>
+				<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+				<bool name="DefinesCapabilities">false</bool>
+				<string name="Name">Modules</string>
+				<int64 name="SourceAssetId">-1</int64>
+				<BinaryString name="Tags"></BinaryString>
+			</Properties>
+			<Item class="ModuleScript" referent="RBX4CEE07EA3E674644A115DC7BA185BB29">
+				<Properties>
+					<BinaryString name="AttributesSerialize"></BinaryString>
+					<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+					<bool name="DefinesCapabilities">false</bool>
+					<Content name="LinkedSource"><null></null></Content>
+					<string name="Name">run</string>
+					<string name="ScriptGuid">{EE01EBC0-DB64-4AA9-9FBA-FF961328E1F1}</string>
+					<ProtectedString name="Source"><![CDATA[--[[
+run.lua
+
+run is the main operation in the plugin that literally runs the whole script
+]]--
+
+local module = {}
+
+local runservice = game:GetService('RunService');
+
+module.sessions = require(script.Parent.sessions);
+local custom = require(script.Parent.customs);
+
+do
+	if runservice:IsClient() and runservice:IsRunning() then
+		module.script = Instance.new("LocalScript",game.ReplicatedFirst)
+		module.script.Source = "";
+		isclient = true;
+	elseif runservice:IsServer() and runservice:IsRunning() then
+		module.script = Instance.new("Script",game.ServerScriptService)
+		module.script.Source = "";
+		isclient = true;
+	else 
+		module.script = Instance.new("Script",game.Selection);
+		isclient = false;
+	end
+end
+
+module.script.Name = "cmd"
+module.script.Source = custom.getComments();
+
+local enabled = true;
+
+function module:run()
+	if not enabled then
+		return;
+	end
+	local lastsource = self.script.Source
+	local source = custom.getBulitin() .. self.script.Source .. "\n\n";
+
+	if isclient then
+		self.script.Enabled = false;
+		self.script.Source = source;
+		wait()
+		self.script.Enabled = true;
+		wait();
+		self.script.Source = lastsource;
+	else
+		task.spawn(function()
+			self.sessions.load(source);
+		end)
+	end
+end
+function module.disable()
+	enabled = false;
+	module.sessions.cancel();
+end
+function module.enable()
+	enabled = true;
+end
+
+
+
+return module
+]]></ProtectedString>
+					<int64 name="SourceAssetId">-1</int64>
+					<BinaryString name="Tags"></BinaryString>
+				</Properties>
+			</Item>
+			<Item class="ModuleScript" referent="RBXEDB3C44BAD5D4009B43D07251DA5F3C5">
+				<Properties>
+					<BinaryString name="AttributesSerialize"></BinaryString>
+					<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+					<bool name="DefinesCapabilities">false</bool>
+					<Content name="LinkedSource"><null></null></Content>
+					<string name="Name">http</string>
+					<string name="ScriptGuid">{1BB33611-18C4-4353-9E7D-D6E9D302B180}</string>
+					<ProtectedString name="Source"><![CDATA[local rs = game:GetService("RunService");
+return function()
+	if rs:IsServer() and rs:IsRunning() then
+		local event = Instance.new("RemoteEvent",game.ReplicatedStorage);
+		event.Name = "httpserviceevent!";
+		local playersfound = {}
+		event.OnServerEvent:Connect(function(player,command,request)
+			local found = false
+			for i,v in next, playersfound do
+				if v == player then
+					found = true;
+				end
+			end
+			if found == false then
+				playersfound[#playersfound+1] = player
+			end
+			if #playersfound == 2 then
+				error("HttpService Event Module has found two players on the same line, line will now stop working!")
+				return;
+			end
+			if command == "get" then
+				local url = request.Url;
+				local headers = request.Headers
+				local Nocache = request.Nocache
+
+				warn("Get Async : ".. url);
+
+				local get = game:GetService('HttpService'):GetAsync(url,Nocache,headers);
+				event:FireClient(player,get)
+			elseif command == "post" then
+				local url = request.Url;
+				local headers = request.Headers
+				local Compress = request.compress
+				local contenttype = request.ctype
+				local data = request.data
+				warn("Post Async : ".. url);
+
+				game:GetService('HttpService'):PostAsync(url,data,contenttype,Compress,headers);
+			end
+		end)
+	end
+end]]></ProtectedString>
+					<int64 name="SourceAssetId">-1</int64>
+					<BinaryString name="Tags"></BinaryString>
+				</Properties>
+			</Item>
+			<Item class="ModuleScript" referent="RBXB38DD19F9D444333AF4F23F7C64C4E4F">
+				<Properties>
+					<BinaryString name="AttributesSerialize"></BinaryString>
+					<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+					<bool name="DefinesCapabilities">false</bool>
+					<Content name="LinkedSource"><null></null></Content>
+					<string name="Name">customs</string>
+					<string name="ScriptGuid">{596318BD-04FF-4166-9884-04F93645FDC1}</string>
+					<ProtectedString name="Source"><![CDATA[local module = {}
+--[[
+literally all this module does is store the bulitin functions 
+]]
+local comments, commands = require(script:WaitForChild("com")), require(script:WaitForChild("cmds"));
+local help = require(script:WaitForChild("help"))
+function module.getComments()
+	return comments;
+end
+function module.getBulitin()
+	return commands;
+end
+function module.getTerminalHelp()
+	return help
+end
+
+return module
+]]></ProtectedString>
+					<int64 name="SourceAssetId">-1</int64>
+					<BinaryString name="Tags"></BinaryString>
+				</Properties>
+				<Item class="ModuleScript" referent="RBX94DF7E6F117D4B038B0057B14691CEAC">
+					<Properties>
+						<BinaryString name="AttributesSerialize"></BinaryString>
+						<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+						<bool name="DefinesCapabilities">false</bool>
+						<Content name="LinkedSource"><null></null></Content>
+						<string name="Name">cmds</string>
+						<string name="ScriptGuid">{22AF3D6A-08E1-495D-9399-E461428278A7}</string>
+						<ProtectedString name="Source"><![CDATA[return [==[
+if game:GetService("RunService"):IsRunning() == false then
+	if typeof(_G) == "table" and _G.getlocalsessions then
+		getlocalsessions = _G.getlocalsessions;
+	else
+		warn("GETLOCALSESSIONS ISNT FOUND, preceed to terminal and paste in `start()` to restart the script, if it isnt an issue continue!")
+		wait(1);
+	end
+end
+
+local function antiLag()
+	local Lighting = game:GetService("Lighting")
+	local RunService = game:GetService("RunService")
+	local Workspace = game:GetService("Workspace");
+
+	local function parseWorkspace(partFunction : (v : Instance) -> ())
+		local counts = 0;
+		for i,v in next, Workspace:GetDescendants() do
+			task.spawn(partFunction, v);
+			RunService.RenderStepped:Wait();
+			counts += 1;
+		end
+		warn('Parsed thru '.. counts.. " parts");
+		return counts;
+	end
+
+	local function convertLighting()
+		Lighting.Ambient = Color3.new();
+		Lighting.ColorShift_Top = Color3.new();
+		Lighting.ColorShift_Bottom = Color3.new();
+		Lighting.OutdoorAmbient = Color3.new();
+
+		Lighting.Brightness = 2.5;
+		Lighting.ShadowSoftness = 0;
+		Lighting.GlobalShadows = false;
+
+		Lighting.ExposureCompensation = 0;
+		Lighting.EnvironmentDiffuseScale = 0;
+		Lighting.EnvironmentSpecularScale = 0;
+	end
+
+	convertLighting();
+	parseWorkspace(function(v)
+		if v:IsA("BasePart") then
+			local part = v;
+			if part.CustomPhysicalProperties == nil then
+				part.CustomPhysicalProperties = PhysicalProperties.new(Enum.Material.SmoothPlastic);
+			end
+			part.Material = Enum.Material.SmoothPlastic;
+			part.CastShadow = false;
+			part.EnableFluidForces = false;
+		elseif v:IsA("Texture") or v:IsA("Decal") then
+			v.Transparency = 1;
+		end
+	end);
+end
+
+function import(id, name, nolog)
+	local isInstance = typeof(id) == "Instance"
+	if isInstance then
+		return require(id);
+	end
+
+	local function findModule(asset : {})
+		if not next(asset) then return; end;
+		for _, instance : ModuleScript in next, asset do
+			if instance:IsA("ModuleScript") and instance.Name == "MainModule" then
+				return instance
+			end
+		end
+
+		return asset[1]
+	end
+
+	local asset = game:GetObjects("rbxassetid://"..id);
+	local module = findModule(asset);
+	return require(module)
+end;
+
+function include(name)
+	local id = (_G.packages[name]);
+	if id then
+		if not getfenv()[name] then
+			warn("Including ", name)
+		end
+		return import(id,name,true);
+	else
+		warn("Package wasn't found, continue to terminal")
+	end
+end
+
+function mouse()
+	local runservice = game:GetService('RunService');
+	if runservice:IsClient() and runservice:IsRunning() then
+		return game.Players.LocalPlayer:GetMouse();
+	else
+		return PluginManager():CreatePlugin():GetMouse();
+	end
+end;
+
+https = {};
+http = https;
+local service = game:GetService("HttpService")
+if game:GetService("RunService"):IsRunning() and game:GetService("RunService"):IsClient() then
+	local http = game:GetService('ReplicatedStorage'):WaitForChild("httpserviceevent!");
+	function https:get(url, nocache, headers)
+		local request = {
+			Url = url;
+			Nocache = nocache;
+			Headers = headers;
+		};
+		http:FireServer("get", request)
+		local response = http.OnClientEvent:Wait();
+		return response;
+	end;
+	function https:post(url, data, content_type, compress,headers)
+		local request = {
+			Url = url;
+			data = data;
+			Headers = headers;
+			ctype = content_type;
+		};
+		local response = http:FireServer("post", request);
+		return response;
+	end;
+	function https:jsonencode(...)
+		return service:JSONEncode(...)
+	end;
+	function https:jsondecode(...)
+		return service:JSONDecode(...)
+	end;
+
+	function https:urlencode(...)
+		return service:UrlEncode(...)
+	end;
+
+	-- Change of Tone --
+
+	function https:GetAsync(url, nocache, headers)
+		local request = {
+			Url = url;
+			Nocache = nocache;
+			Headers = headers;
+		};
+		http:FireServer("get", request)
+		local response = http.OnClientEvent:Wait();
+		return response;
+	end;
+	function https:PostAsync(url, data, content_type, compress,headers)
+		local request = {
+			Url = url;
+			data = data;
+			Headers = headers;
+			ctype = content_type;
+		};
+		local response = http:FireServer("post", request);
+		return response;
+	end;
+
+	function https:JSONEncode(...)
+		return service:JSONEncode(...)
+	end;
+	function https:JSONDecode(...)
+		return service:JSONDecode(...)
+	end;
+
+	function https:UrlEncode(...)
+		return service:UrlEncode(...)
+	end;
+else
+	function https:get(url, headers)
+		local request = {
+			Url = url;
+			Method = 'GET';
+			Headers = headers;
+		};
+		local response = service:RequestAsync(request);
+		return response;
+	end;
+	function https:post(url, headers, body)
+		local request = {
+			Url = url;
+			Method = 'POST';
+			Headers = headers;
+			Body = body;
+		};
+		local response = service:PostAsync(request);
+		return response;
+	end;
+	function https:jsonencode(...)
+		return service:JSONEncode(...)
+	end;
+	function https:jsondecode(...)
+		return service:JSONDecode(...)
+	end;
+
+	function https:urlencode(...)
+		return service:UrlEncode(...)
+	end;
+
+	-- Change In Tone --
+	function https:GetAsync(...)
+		return service:GetAsync(...);
+	end;
+	function https:PostAsync(...)
+		return service:PostAsync(...);
+	end;
+
+	function https:JSONEncode(...)
+		return service:JSONEncode(...)
+	end;
+	function https:JSONDecode(...)
+		return service:JSONDecode(...)
+	end;
+
+	function https:UrlEncode(...)
+		return service:UrlEncode(...)
+	end;
+end
+
+local function path(obj : Instance)
+	local str = "";
+	if obj == nil then
+		return "nil";
+	end
+	local function GetAncestry(obj, gameshowed)
+		local tree = obj:GetFullName():split(".")
+		local family = {};
+		local c = obj
+
+		for i, v in next, tree do
+			family[#family + 1] = c
+			c = c.Parent
+		end
+		if c == game and gameshowed then
+			family[#family + 1] = game;
+		end
+		if family and #family > 1 then
+			local temp = nil
+			for n = 1, math.floor(#family / 2) do
+				temp = family[n]
+				family[n] = family[#family - (n - 1)]
+				family[#family - (n - 1)] = temp
+			end 
+		end
+		return family
+	end
+	local function fromChildren(instance)
+		local number;
+		if instance.Parent then
+			for i,v in next, instance.Parent:GetChildren() do
+				if v == instance then
+					number = i;
+				end
+			end
+		end
+		return number;
+	end
+	local function sameName(instance)
+		if instance.Parent then
+			if instance.Parent:FindFirstChild(instance.Name) then
+					return instance.Parent:FindFirstChild(instance.Name) ~= instance
+				end
+			end
+		return false;
+	end
+	
+	local function isinvalid(name)
+		do
+			if name:find("%s+") then
+				return true
+			end
+			if name:find("[%-%+%%%!%$%#%@%^%&%*%(%)%[%]%{%}%.]") then
+				return true
+			end
+			if tonumber(name:sub(1,1)) then
+				return true
+			end
+		end
+		return false
+	end
+	local function format(name)
+		local f = name:gsub("\"","\\\"")
+		return "[\""..f.."\"]"
+	end
+	local function add(v)
+		if sameName(v) then
+			local number = fromChildren(v)
+			str = str .. ":GetChildren()[".. number.."]";
+		else
+			if isinvalid(v.Name) then
+				str = str .. format(v.Name)
+			else
+				str = str ..  "."..v.Name
+			end
+		end
+	end
+	for i,v in next, GetAncestry(obj,true) do
+		if v == game then
+			str = str .. "game"
+		else
+			add(v);
+		end
+	end
+	return str
+end
+
+local function getSource(script : LuaSourceContainer)
+	assert(typeof(script) == "Instance" and script:IsA("LuaSourceContainer"), "Script must be a LuaSourceContainer")
+	local parent = game:GetService("InsertService")
+	if parent:FindFirstChild("SourceEvent") then
+		parent.SourceEvent:Fire(script)
+		local s, source = parent.GiverEvent.Event:Wait()
+		if s == script then
+			return source;
+		end
+	else
+		local sus, source = pcall(function()
+			return script.Source
+		end);
+		if sus then
+			return source;
+		end
+	end
+	warn("Couldn't get source")
+	return;
+end
+
+function run(scripta:Script)
+	task.spawn(function()
+		local source = scripta.Source;
+		local editedSource = "local script = "..path(scripta).."\n"..source;
+		local id = getlocalsessions().create(editedSource);
+		if id then
+			getlocalsessions().resume(id);
+		end
+	end)
+end
+getfenv().loadstring = function(source)
+	return _G.loadstring(source)
+end
+s_load = function(source)
+	local id = getlocalsessions().create(source)
+	return function()
+		if id then
+			getlocalsessions().resume(id)
+		end
+	end
+end
+local function req(moduleId)
+	if tonumber(moduleId) then
+		return require(moduleId);
+	elseif typeof(moduleId) == "Instance" and moduleId:IsA("ModuleScript") then
+		local isSyntaxErr; do
+			local sus = pcall(loadstring("if true then return end; "..moduleId.Source));
+			isSyntaxErr = not sus;
+		end
+		if isSyntaxErr == false then
+			local sus, err = pcall(loadstring(`local script = {path(moduleId)};\n{moduleId.Source}`))
+			if sus then
+				return err;
+			else
+				warn("Error loading module")
+			end
+		else
+			warn("Syntax error in ", moduleId)
+		end
+	end
+end
+
+local function fromJSON (json)
+	return game:GetService("HttpService"):JSONDecode(json)
+end;local function JSONDecode (json) return game:GetService("HttpService"):JSONDecode(json) end
+local function toJSON (json)
+	return game:GetService("HttpService"):JSONEncode(json)
+end;local function JSONEncode (json) return game:GetService("HttpService"):JSONEncode(json) end
+
+local toString;
+toString = function(value)
+	local stringify
+	local insert = table.insert
+
+	stringify = function(v, spaces, usesemicolon, depth)
+		if type(v) ~= 'table' then
+			return toString(v)
+		elseif not next(v) then
+			return '{}'
+		end
+
+		spaces = spaces or 4
+		depth = depth or 1
+
+		local space = (" "):rep(depth * spaces)
+		local sep = usesemicolon and ";" or ","
+		local concatenationBuilder = {"{"}
+
+		for k, x in next, v do
+			insert(concatenationBuilder, ("\n%s[%s] = %s%s"):format(space,type(k)=='number'and toString(k)or(toString(k)), stringify(x, spaces, usesemicolon, depth+1), sep))
+		end
+
+		local s = table.concat(concatenationBuilder)
+		return ("%s\n%s}"):format(s:sub(1,-2), space:sub(1, -spaces-1))
+	end
+	
+	local type = typeof(value);
+	if type == "table"  then
+		return stringify(value);
+	elseif type == "Instance" then
+		return path(value);
+	elseif type == "string" then
+		local convert = value:gsub("\"","\\\""):gsub('.',function(c)
+			if c:find("%w") then
+				return c;
+			elseif c:find("%p") then
+				return c;
+			end
+			return "\\" .. c:byte();
+		end)
+		return string.format("\"%s\"",convert);
+	elseif type == "Color3" then
+		return string.format("Color3.fromHex(\"#%s\")",value:ToHex());
+	end
+	return tostring(value);
+end
+
+local script = nil;
+]==]]]></ProtectedString>
+						<int64 name="SourceAssetId">-1</int64>
+						<BinaryString name="Tags"></BinaryString>
+					</Properties>
+				</Item>
+				<Item class="ModuleScript" referent="RBXC30CC97670DA4EAEA7C96093A90E75E1">
+					<Properties>
+						<BinaryString name="AttributesSerialize"></BinaryString>
+						<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+						<bool name="DefinesCapabilities">false</bool>
+						<Content name="LinkedSource"><null></null></Content>
+						<string name="Name">com</string>
+						<string name="ScriptGuid">{1DC1B9B1-3EFB-42B7-9760-6C4D387DE908}</string>
+						<ProtectedString name="Source"><![CDATA[return (function()
+	local rs = game["Run Service"];
+	if rs:IsEdit() then
+		return 
+[==[
+--[[
+
+▄█▄    ████▄ █▀▄▀█ █▀▄▀█ ██      ▄   ██▄          ▄▄▄▄▄   ▄█▄    █▄▄▄▄ ▄█ █ ▄▄     ▄▄▄▄▀     
+█▀ ▀▄  █   █ █ █ █ █ █ █ █ █      █  █  █        █     ▀▄ █▀ ▀▄  █  ▄▀ ██ █   █ ▀▀▀ █        
+█   ▀  █   █ █ ▄ █ █ ▄ █ █▄▄█ ██   █ █   █     ▄  ▀▀▀▀▄   █   ▀  █▀▀▌  ██ █▀▀▀      █        
+█▄  ▄▀ ▀████ █   █ █   █ █  █ █ █  █ █  █       ▀▄▄▄▄▀    █▄  ▄▀ █  █  ▐█ █        █         
+▀███▀           █     █     █ █  █ █ ███▀                 ▀███▀    █    ▐  █      ▀ ██ ██ ██ 
+               ▀     ▀     █  █   ██                              ▀         ▀                
+                          ▀                                                                  
+𝗍𝖺𝖻𝗌 𝖼𝖺𝗇 𝖺𝗅𝗌𝗈 𝖺𝖼𝗍 𝖺𝗌 𝗍𝗁𝖾 𝗍𝖾𝗋𝗂𝗆𝖺𝗅, 𝖺𝗅𝗅𝗈𝗐𝗂𝗇𝗀 𝗒𝗈𝗎 𝗍𝗈 𝗎𝗌𝖾 𝗍𝖾𝗋𝗆𝗂𝗇𝖺𝗅 𝖿𝗎𝗇𝖼𝗍𝗂𝗈𝗇𝗌
+𝗎𝗌𝖾 𝗁𝖾𝗅𝗉() 𝖿𝗈𝗋 𝗆𝗈𝗋𝖾 𝗂𝗇𝖿𝗈𝗋𝗆𝖺𝗍𝗂𝗈𝗇.
+
+𝗋𝗎𝗇 𝗍𝗁𝖾 𝗀𝖺𝗆𝖾 𝗍𝗈 𝗎𝗌𝖾 𝗍𝗁𝖾 𝗉𝗅𝗎𝗀𝗂𝗇 𝗂𝗇 𝖺 𝗌𝖺𝖿𝖾𝗋 𝗐𝖺𝗒
+
+BulitIn //
+	import: import a module // function : id, enviroment name
+		requires a module and places it in the global enviroment
+
+	mouse: gets the user mouse // function : no args
+		(mouse) returns a Mouse instance
+		
+	https,http: // table
+		(https) is used to access the web from the client itself
+		
+	path: gets the path of an instance// function : Instance
+		(path) creates an instance path
+		
+	run: runs a script// function : ModuleScript
+		(run): runs a script
+		
+	getlocalsessions: gets the sessions module// 
+		{
+			cancel : cancel all sessions 		(getlocalsessions) is used to cancel, stop, or run previous sessions
+			stop : stop a session				this is especially useful to lower lag
+			sessions : the sessions				also as an option you can replace "loadstring" with s_load a session
+		}
+	req: requires a module// function : Script
+		(req): requires a module BASED on the module's source
+		
+	toString : converts a value into a string, including a table // function : any
+		(toString) : converts a value into a string
+	antiLag : a bulitin script to boost fps.
+	
+
+Commands //
+	double \ then
+		return : run the script
+		import : import a lua script file
+		export : export the script as a file
+		help 	: help
+		select : pastes your selection 
+]]--
+]==]
+	else
+		return [==[
+--[[
+▄█▄    ████▄ █▀▄▀█ █▀▄▀█ ██      ▄   ██▄          ▄▄▄▄▄   ▄█▄    █▄▄▄▄ ▄█ █ ▄▄     ▄▄▄▄▀     
+█▀ ▀▄  █   █ █ █ █ █ █ █ █ █      █  █  █        █     ▀▄ █▀ ▀▄  █  ▄▀ ██ █   █ ▀▀▀ █        
+█   ▀  █   █ █ ▄ █ █ ▄ █ █▄▄█ ██   █ █   █     ▄  ▀▀▀▀▄   █   ▀  █▀▀▌  ██ █▀▀▀      █        
+█▄  ▄▀ ▀████ █   █ █   █ █  █ █ █  █ █  █       ▀▄▄▄▄▀    █▄  ▄▀ █  █  ▐█ █        █         
+▀███▀           █     █     █ █  █ █ ███▀                 ▀███▀    █    ▐  █      ▀ ██ ██ ██ 
+               ▀     ▀     █  █   ██                              ▀         ▀                
+                          ▀                                                                  
+𝖢𝗈𝗆𝗆𝖺𝗇𝖽 𝖲𝖼𝗋𝗂𝗉𝗍 𝗈𝗇 𝗍𝗁𝖾 𝖼𝗅𝗂𝖾𝗇𝗍 𝖼𝖺𝗇 𝗎𝗌𝖾 𝗁𝗍𝗍𝗉𝗌!
+
+BulitIn //
+	import: import a module // function : id, enviroment name
+		requires a module and places it in the global enviroment
+		
+	mouse: gets the user mouse // function : no args
+		(mouse) returns a Mouse instance
+		
+	https,http: // table
+		(https) is used to access the web from the client itself
+		
+	path: gets the path of an instance // function : Instance
+		(path) creates an instance path
+		
+	run: runs a script // function : Script or LocalScript
+		(run): runs a script
+		
+	g̶e̶t̶l̶o̶c̶a̶l̶s̶e̶s̶s̶i̶o̶n̶s̶:̶ g̶e̶t̶s̶ t̶h̶e̶ s̶e̶s̶s̶i̶o̶n̶s̶ m̶o̶d̶u̶l̶e̶//  : Can't use this in the client!
+		{
+			cancel : cancel all sessions 		(getlocalsessions) is used to cancel, stop, or run previous sessions
+			stop : stop a session				this is especially useful to lower lag
+			sessions : the sessions				also as an option you can replace "loadstring" with s_load a session
+		}
+		
+	r̶e̶q̶:̶ r̶e̶q̶u̶i̶r̶e̶s̶ a̶ m̶o̶d̶u̶l̶e̶// f̶u̶n̶c̶t̶i̶o̶n̶ :̶ M̶o̶d̶u̶l̶e̶S̶c̶r̶i̶p̶t̶  : Can't use this in the client!
+		(req): requires a module BASED on the module's source
+		
+	toString : converts a value into a string, including a table // function : any
+		(toString) : converts a value into a string
+		
+	antiLag : a bulitin script to boost fps.
+	
+
+Commands 
+	double \ then
+		return : run the script
+		import : import a lua script file
+		export : export the script as a file
+		help 	: help
+		select : pastes your selection 
+]]--]==]
+	end
+end)()]]></ProtectedString>
+						<int64 name="SourceAssetId">-1</int64>
+						<BinaryString name="Tags"></BinaryString>
+					</Properties>
+				</Item>
+				<Item class="ModuleScript" referent="RBX274454A94CAF41469DA50DD58A8B23A3">
+					<Properties>
+						<BinaryString name="AttributesSerialize"></BinaryString>
+						<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+						<bool name="DefinesCapabilities">false</bool>
+						<Content name="LinkedSource"><null></null></Content>
+						<string name="Name">help</string>
+						<string name="ScriptGuid">{6DC2A214-4319-457B-9065-D560A3F2CBBA}</string>
+						<ProtectedString name="Source"><![CDATA[return [[
+the terminal is a DIRECT interferce with the actual plugin
+in here you can access the "tabs" and special functions inside the plugin
+
+enableLoadstring() : it enables loadstring to be used in the cmd script;
+disableLoadstring() : disables loadstring from being fired (This helps in order to CONTROL as sessions cannot control loadstring);
+
+tab() : it creates a new tab and when closed can never be accessed again
+start() : this is the main tab, if you fire this when you have finished code, it will remember and bring it up for you!
+
+-- Packages
+packages are modules that are saved onto the plugin for later purposes
+
+to save a package you MUST have a module that returns a table or a function
+savepackage(id : assetid, name : string) : saves the package
+removepackage(name) : removes the package
+
+If you are in a tab, you can use include() to get a package
+
+include 'help' -- they are now a global variable;
+
+Also! The terminal can still be used inside any tab
+]]]]></ProtectedString>
+						<int64 name="SourceAssetId">-1</int64>
+						<BinaryString name="Tags"></BinaryString>
+					</Properties>
+				</Item>
+			</Item>
+			<Item class="ModuleScript" referent="RBX0B69467131454F189C4C3B0B7587CD73">
+				<Properties>
+					<BinaryString name="AttributesSerialize"></BinaryString>
+					<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+					<bool name="DefinesCapabilities">false</bool>
+					<Content name="LinkedSource"><null></null></Content>
+					<string name="Name">loadstring</string>
+					<string name="ScriptGuid">{5E626FA7-279D-42E1-8932-BA41E358BD81}</string>
+					<ProtectedString name="Source"><![CDATA[return function()
+	_G.loadstring = function(...)
+		if _G.LoadstringEnabled then
+			return loadstring(...);
+		else
+			return function()
+				error("Loadstring disabled!");
+			end
+		end
+	end
+end]]></ProtectedString>
+					<int64 name="SourceAssetId">-1</int64>
+					<BinaryString name="Tags"></BinaryString>
+				</Properties>
+			</Item>
+			<Item class="ModuleScript" referent="RBXC005489DD2D94EC0800B4F218AD0B175">
+				<Properties>
+					<BinaryString name="AttributesSerialize"></BinaryString>
+					<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+					<bool name="DefinesCapabilities">false</bool>
+					<Content name="LinkedSource"><null></null></Content>
+					<string name="Name">sessions</string>
+					<string name="ScriptGuid">{E34451E4-B7E8-40CA-99E6-912678DC755B}</string>
+					<ProtectedString name="Source"><![CDATA[local sessions = {};
+--[[
+sessions.lua
+
+a module that runs code but also stores the code so no code gets out of hand
+]]
+
+local state = coroutine.status;
+enabled = true;
+local function syntaxerr(code)
+	local sus,err = pcall(loadstring("if true then return end;"..code));
+	return not sus, err
+end
+local function create(code,errorscript)
+	local id = #sessions+1;
+
+	local sus, err = syntaxerr(code);
+	if sus == false then
+		local source = string.format("local sus, err = pcall(function() %s end); if sus == false then warn(\"%s\"..err) end",code,errorscript or "")
+		local load = loadstring(source);
+
+		if load then
+			local coro = coroutine.create(function()
+				local sus, err = pcall(loadstring(source))
+				if not sus then
+					warn(err)
+				end
+			end);
+			sessions[id] = {load = load, coro = coro};
+			return id;
+		end
+	else
+		warn(err)
+	end
+	return nil;
+end
+local function resume(id)
+	if sessions[id] then
+		if state(sessions[id].coro) == "dead" then
+			local coro = coroutine.create(sessions[id].load);
+			sessions[id].coro = coro;
+
+			coroutine.resume(sessions[id].coro)
+		else
+			coroutine.resume(sessions[id].coro)
+		end
+	end
+end
+local function stop(id)
+	if sessions[id] then
+		if state(sessions[id].coro) ~= "dead" then
+			coroutine.close(sessions[id].coro)
+		end
+	end
+end
+local function cancel()
+	for i,v in next, sessions do
+		pcall(function()
+			coroutine.close(v.coro);
+			sessions[i] = nil;
+		end)
+	end
+end
+
+
+module = {
+	sessions = sessions,
+	create = create;
+	resume = resume;
+	stop = stop;
+	cancel = cancel;
+	load = function(code)
+		local id = create(code)
+		if id then
+			return resume(id);
+		end
+	end,
+};
+_G.getlocalsessions = function()
+	return module;
+end;
+
+return module;]]></ProtectedString>
+					<int64 name="SourceAssetId">-1</int64>
+					<BinaryString name="Tags"></BinaryString>
+				</Properties>
+			</Item>
+			<Item class="ModuleScript" referent="RBXC3C3C92910DF4F398701F98F88A757CC">
+				<Properties>
+					<BinaryString name="AttributesSerialize"></BinaryString>
+					<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+					<bool name="DefinesCapabilities">false</bool>
+					<Content name="LinkedSource"><null></null></Content>
+					<string name="Name">getsource</string>
+					<string name="ScriptGuid">{58F7D81B-737D-42FC-8D86-2AEEF5E2A70C}</string>
+					<ProtectedString name="Source"><![CDATA[local parent = game:GetService('InsertService');
+
+return function()
+	local runService = game:GetService("RunService");
+	if runService:IsRunning() then
+		for i,v in next, parent:GetChildren() do
+			if v.Name == "SourceEvent" or v.Name == 'GiverEvent' then
+				v:Destroy();
+			end
+		end
+		local ask = Instance.new("BindableEvent",parent)
+		ask.Name = "SourceEvent"
+		local deliver = Instance.new("BindableEvent",parent)
+		deliver.Name = "GiverEvent"
+
+		ask.Event:Connect(function(script)
+			local source = script.Source;
+			deliver:Fire(script,source);
+		end)
+	end
+end]]></ProtectedString>
+					<int64 name="SourceAssetId">-1</int64>
+					<BinaryString name="Tags"></BinaryString>
+				</Properties>
+			</Item>
+			<Item class="ModuleScript" referent="RBXAF552C8A9FD34C818AFBA7928A085F7F">
+				<Properties>
+					<BinaryString name="AttributesSerialize"></BinaryString>
+					<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+					<bool name="DefinesCapabilities">false</bool>
+					<Content name="LinkedSource"><null></null></Content>
+					<string name="Name">sourcecmd</string>
+					<string name="ScriptGuid">{747E6E1C-05F1-4CC3-9849-A20CFEF0E601}</string>
+					<ProtectedString name="Source"><![CDATA[local module = {}
+
+module.cmds = {}
+local ticket =  3
+-- Adds a command and its associated function
+function module:addtocmds(cmd, func)
+	self.cmds[cmd] = func
+end
+
+-- Searches for a text pattern in the source
+function module:searchForText(text, source)
+	local split = text:split(source)
+	local found = #split > 1
+	local add = table.concat(split)  -- Concatenate the split strings
+	return found, add
+end
+
+-- Main task to monitor scripts
+task.spawn(function()
+	local scriptService = game:GetService("ScriptEditorService")
+	local runService = game:GetService("RunService")
+	
+	local b = false;
+	
+	task.spawn(function()
+		while task.wait(0) do
+			if _G.ticket == 3 then
+				warn("Break!")
+				b = true;
+				break
+			end
+		end
+	end)
+	
+	while true do
+		if runService:IsEdit() then
+			runService.PreRender:Wait();
+			scriptService.TextDocumentDidChange:Wait();
+		else
+			task.wait();
+			scriptService.TextDocumentDidChange:Wait();
+		end
+		task.wait(0.1);
+		if b then
+			warn("Broke!")
+			break;
+		end
+		local success, err = pcall(function()
+			local scripts = scriptService:GetScriptDocuments()
+			for _, v in ipairs(scripts) do
+				if not v:IsCommandBar() then
+					local scriptValue = v:GetScript()
+					if scriptValue.Parent then
+						local source = scriptService:GetEditorSource(scriptValue)
+						for name, func in pairs(module.cmds) do
+							local found, add = module:searchForText(source, name);
+							local line, cursor = v:GetSelectionStart()
+							if found then
+								pcall(function()  -- Error handling for command execution
+									func(scriptValue, source, add,function(callback)
+										v:ForceSetSelectionAsync(line,1,line,1);
+									end,v)
+								end)
+							end
+						end
+					end
+				end
+			end
+		end)
+		if not success then
+			warn(err, "sourcecmd")
+		end
+	end
+end)
+
+return module]]></ProtectedString>
+					<int64 name="SourceAssetId">-1</int64>
+					<BinaryString name="Tags"></BinaryString>
+				</Properties>
+			</Item>
+			<Item class="ModuleScript" referent="RBXF9BDBBA7759145B28DC5CD5B6D70BEEB">
+				<Properties>
+					<BinaryString name="AttributesSerialize"></BinaryString>
+					<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+					<bool name="DefinesCapabilities">false</bool>
+					<Content name="LinkedSource"><null></null></Content>
+					<string name="Name">getpath</string>
+					<string name="ScriptGuid">{AF92CBC1-13A3-41CF-9E91-D11B205EB41D}</string>
+					<ProtectedString name="Source"><![CDATA[local function GetAncestry(obj, gameshowed) -- gets the ancestry of the obj
+	local tree = obj:GetFullName():split(".")
+	local family = {};
+	local c = obj
+
+	for i, v in next, tree do
+		family[#family + 1] = c
+		c = c.Parent
+	end
+	if c == game and gameshowed then
+		family[#family + 1] = game;
+	end
+	if family and #family > 1 then
+		local temp = nil
+		for n = 1, math.floor(#family / 2) do
+			temp = family[n]
+			family[n] = family[#family - (n - 1)]
+			family[#family - (n - 1)] = temp
+		end 
+	end
+	return family
+
+end
+
+local function fromChildren(instance)
+	local number;
+	if instance.Parent then
+		for i,v in next, instance.Parent:GetChildren() do
+			if v == instance then
+				number = i;
+			end
+		end
+	end
+	return number;
+end
+local function sameName(instance)
+	if instance.Parent then
+		for i,v in next, instance.Parent:GetChildren() do
+			if v.Name == instance.Name and v~=instance then
+				return true;
+			end
+		end
+	end
+	return false;
+end
+
+local function FindRelative(obj, obj2) --  Finds the closet relatives to both instances and then gives the hierchy of the relative to the obj
+	local tree1 = GetAncestry(obj,true)
+	local tree2 = GetAncestry(obj2,true)
+	local relative, parents;
+	for index, object in next, tree1 do
+		for index2, object2 in next, tree2 do
+			if object == object2 then
+				relative = object
+				parents = #tree1 - index
+			end
+		end
+	end
+	return relative, parents;
+end
+local function codepath(obj : Instance) -- Makes a string of the path to the instance
+	local str = "";
+	local function isinvalid(name)
+		do
+			if name:find("%s+") then
+				return true
+			end
+			if name:find("[%-%+%%%!%$%#%@%^%&%*%(%)%[%]%{%}%.]") then
+				return true
+			end
+			if tonumber(name:sub(1,1)) then
+				return true
+			end
+			if #name == 0 then
+				return true;
+			end
+		end
+		return false
+	end
+	local function format(name)
+		local f = name:gsub("\"","\\\"")
+		return ":WaitForChild(\""..f.."\")"
+	end
+	local function formatService(name)
+		local f = name:gsub("\"","\\\"")
+		return ":GetService(\""..f.."\")"
+	end
+
+	local function add(v)
+		if sameName(v) then
+			local number = fromChildren(v)
+			str = str .. ":GetChildren()[".. number.."]";
+		else
+			if v.Parent == game then
+				str = str .. formatService(v.ClassName);
+			else
+				str = str .. format(v.Name)
+			end
+		end
+	end
+	for i,v in next, GetAncestry(obj,true) do
+		if v == game then
+			str = str .. "game"
+		else
+			add(v);
+		end
+	end
+	return str
+end
+local function codepathfromrelative(obj : Instance ,obj2 : Instance) -- Gets relative path as setting an instance as a starting point of the path
+	local closet, parents = FindRelative(obj,obj2)
+	assert(closet and parents, "Instance is out of bounds")
+
+	local onehalf = string.rep(".Parent",parents)
+
+	local ancestry = GetAncestry(obj2,true)
+	local found = false;
+
+	local secondhalf = "";
+	local function isinvalid(name)
+		do
+			if name:find("%s+") then
+				return true
+			end
+			if name:find("[%-%+%%%!%$%#%@%^%&%*%(%)%[%]%{%}%.]") then
+				return true
+			end
+			if tonumber(name:sub(1,1)) then
+				return true
+			end
+		end
+		return false
+	end
+	local function format(name)
+		local f = name:gsub("\"","\\\"")
+		return "[\""..f.."\"]"
+	end
+	local function add(v)
+		if sameName(v) then
+			local number = fromChildren(v)
+			secondhalf = secondhalf .. ":GetChildren()[".. number.."]";
+		else
+			if isinvalid(v.Name) then
+				secondhalf = secondhalf .. format(v.Name)
+			else
+				secondhalf = secondhalf ..  "."..v.Name
+			end
+		end
+	end
+	for i,v in next, ancestry do
+		if v == closet then
+			found = true
+			continue
+		elseif found then
+			add(v);
+		end
+	end
+	local str = onehalf .. secondhalf
+	return (str)
+end
+local function smartscriptcodepath(script : Instance, obj2 : Instance) -- Makes a whole code path smartly, if the closest relative is game then it uses game as the starting point
+	local closet, parents = FindRelative(script,obj2)
+	assert(closet and parents, "Instance is out of bounds")
+	
+	if closet == game then
+		return codepath(obj2);
+	else
+		return "script"..codepathfromrelative(script,obj2);
+	end
+end
+return {
+	GetRelative = FindRelative;
+	GetAncestry = GetAncestry;
+	GetPath = function(instance,...)
+		if typeof(instance) == "Instance" then
+			if ... and typeof(...) == "Instance" then
+				return codepathfromrelative(instance,...)
+			else
+				return codepath(instance)
+			end
+		end
+		return;
+	end;
+	GetPathFromInstance = codepathfromrelative;
+	ScriptCodePath = smartscriptcodepath;
+}]]></ProtectedString>
+					<int64 name="SourceAssetId">17846710815</int64>
+					<BinaryString name="Tags"></BinaryString>
+				</Properties>
+			</Item>
+			<Item class="ModuleScript" referent="RBX30C6943E742A4F25B9BCBDE8E45B0308">
+				<Properties>
+					<BinaryString name="AttributesSerialize"></BinaryString>
+					<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+					<bool name="DefinesCapabilities">false</bool>
+					<Content name="LinkedSource"><null></null></Content>
+					<string name="Name">lexer</string>
+					<string name="ScriptGuid">{D97327DD-D5C4-49A1-9203-61D751AEFFE3}</string>
+					<ProtectedString name="Source"><![CDATA[--[[
+ReLex
+ Regex based lexer for Lua
+ 
+Features include
+
+	Quick : Can get 5,289 tokens, in one second (and i'm using a trash computer)
+	Lightweight : Only < 170 lines of code (not including this comment)
+	Open Source : You can modify the script into your needs
+	Compatiable : With Lua 5.1 >
+
+Bugs--?
+Doesn't support `` strings
+]]--
+local rep = string.rep;
+
+local addUp;
+local luamatches = {
+	WHITESPACE = {"^%s","^%s+"};
+	IDENT = {"^%a","^%w+"};
+	
+	NUMBER2 = {"^0?X?%d+%.?%d*e[%+%-]?%d+","^0?X?%d+%.?%d*e[%+%-]?%d+"};
+	NUMBER = {"^0?X?%d+%.?%d*",function(c)
+		if c:match("^0?X?%d+%.?%d*e[%+%-]?%d+") then
+			return #c:match("^0?X?%d+%.?%d*e[%+%-]?%d+")
+		elseif c:match("^0?X?%d+%.?%d*e") then
+			return #c:match("^0?X?%d+%.?%d*e")
+		elseif c:match("^0?X?%d+%.?%d*") then
+			return #c:match("^0?X?%d+%.?%d*")
+		end
+	end};
+	
+	STRING1 = {"^\"",function(c)
+		local g = c:gsub("\\\"","aa");
+		local match = g:match("%b\"\"");
+
+		return (match and #match) or nil;
+	end};
+	STRING2 = {"^'",function(c)
+		local g = c:gsub("\\'","aa");
+		local match = g:match("%b''");
+
+		return (match and #match) or nil;
+	end};
+	STRING3 = {"^%[%=*%[.*",function(c)
+		local start = c:match("^%[%=*%[")
+		local count = 0;
+
+		start:gsub("%=",function()
+			count = count + 1;
+		end);
+
+		local rep = rep("%=",count)
+		local match = c:match("^%[%=*%[.*%]"..rep.."%]");
+
+		return (match and #match) or nil;
+	end};
+
+	COMMENT1 = {"^%-%-.*",function(c)
+		if c:match("^%-%-%[%=*%[.*") then
+			local start = c:match("^%-%-%[%=*%[")
+			local count = 0;
+
+			start:gsub("%=",function()
+				count = count + 1;
+			end)
+
+			local rep = rep("%=",count);
+			local match = c:match("^%-%-%[%=*%[.*%]"..rep.."%]");
+
+			return (match and #match) or nil;
+		end
+		local match = "--";
+
+		for index = 3, c:len() do -- TODO: I dont know what but %-%-.*\n doesnt work!
+			local character = c:sub(index, index);
+			if character == "\n" then
+				break;
+			else
+				match = match .. character;
+			end
+		end
+
+		return match:len();
+	end};
+	SYMBOL2 = {"^[_%%%^%*%#%(%)%-%+%[%]%{%}~;:,%.%/%\\%=<>]","^[_%%%^%*%#%(%)%-%+%[%]%{%}~;:,%.%/%\\%=<>]"};
+
+};
+
+local function giveType(token)
+	return token:match("%a+"):lower();
+end
+
+local function getToken()
+	local match, token;
+	for i,v in next, luamatches do
+		local pattern = v[1];
+		if addUp:match(pattern) then
+			if match and (addUp:match(pattern):len() > match) then
+				match = addUp:match(pattern):len();
+				token = i;
+			else
+				match = addUp:match(pattern):len();
+				token = i;
+			end
+		end
+	end
+	return token;
+end
+
+local function request(token)
+	local parse = luamatches[token][2];
+	local normal = giveType(token);
+	local source = addUp;
+
+	if type(parse) == "function" then
+		if parse(addUp) then
+			local index = parse(addUp);
+			source = addUp:sub(1,index)
+			addUp = addUp:sub(index+1);
+			return normal, source;
+		end
+		addUp = "";
+	else
+		if addUp:match(parse) then
+			local index = #addUp:match(parse);
+			source = addUp:sub(1,index)
+			addUp = addUp:sub(index+1);
+			return normal, source;
+		end
+		addUp = "";
+	end
+
+	return normal, source;
+end
+
+local function parse(source : string) : () -> (string, string)
+	addUp = source;
+	return function()
+		local token = getToken();
+		if token then
+			return request(token)
+		end
+		return;
+	end
+end;
+
+local function array(source) : {{Whitespace : string, Source : string, Type : string, MultiLine : boolean?}}
+	if source then
+		local tokens = {};
+		local addedWhitespace = "";
+
+		for type, source in parse(source) do
+			if type == "whitespace" then
+				addedWhitespace = addedWhitespace .. source;
+			else
+				if tokens[#tokens] then
+					tokens[#tokens].Whitespace = addedWhitespace;
+				end
+				local isMultiline = (type == "string" and source:sub(1,1) == "[") or (type == "comment" and source:sub(1,3) == "--[")
+				tokens[#tokens+1] = {
+					Source = source;
+					Type = type:sub(1,1):upper() .. type:sub(2);
+					MultiLine = isMultiline or nil;
+					Whitespace = "";
+				}
+				addedWhitespace = "";
+			end
+		end
+		if #addedWhitespace > 0 then
+			tokens[#tokens].Whitespace = addedWhitespace;
+			addedWhitespace = nil;
+		end
+		return tokens
+	end
+	return
+end
+
+return {
+	scan = parse,
+	parse = array;
+};]]></ProtectedString>
+					<int64 name="SourceAssetId">18940080396</int64>
+					<BinaryString name="Tags"></BinaryString>
+				</Properties>
+			</Item>
+		</Item>
+		<Item class="Script" referent="RBXF4504D1CE4214D1AB50449D96CFBB3D4">
+			<Properties>
+				<BinaryString name="AttributesSerialize"></BinaryString>
+				<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+				<bool name="DefinesCapabilities">false</bool>
+				<bool name="Disabled">false</bool>
+				<Content name="LinkedSource"><null></null></Content>
+				<string name="Name">Plugin</string>
+				<token name="RunContext">0</token>
+				<string name="ScriptGuid">{AC1366C6-384C-4BFD-9CDD-3927FC71D86C}</string>
+				<ProtectedString name="Source"><![CDATA[local plugin = plugin or PluginManager():CreatePlugin();
+
+if not plugin then
+	return;
+end
+
+local modules = script.Parent:WaitForChild("Modules");
+
+local toolbar = plugin:CreateToolbar("cmd script")
+local executebutton = toolbar:CreateButton("Run","Run the command script","rbxassetid://7072707514");
+local openbutton = toolbar:CreateButton("Edit","Open the script","rbxassetid://7072715877");
+local terminal = toolbar:CreateButton("Terminal","Open Terminal","rbxassetid://10734982144");
+
+local getTerminal = require(script.Parent.getTerminal)
+
+local selection = game:GetService("Selection");
+local studioService = game:GetService("StudioService");
+local coreGui = game:GetService("CoreGui");
+local players = game:GetService("Players");
+local scriptEditorService = game:GetService("ScriptEditorService");
+
+local customs = require(modules:WaitForChild("customs"))
+
+task.spawn(require(modules.loadstring))
+task.spawn(require(modules.getsource))
+
+
+local cmdScript;
+
+
+-- everything is global so the terimal can use them
+
+function reload()
+	_G.ticket = 3;
+	wait();
+	_G.ticket = nil;
+end
+
+-- Packages --
+--------------
+local packages = plugin:GetSetting("packages") or {};
+
+function savep()
+	_G.packages = packages;
+	plugin:SetSetting("packages",packages)
+end
+function savepackage(id,name)
+	if type(id) == "number" and type(name) == "string" then
+		local success, package = pcall(function()
+			local assets = game:GetObjects("rbxassetid://"..id)
+			if assets[1] and assets[1]:IsA("ModuleScript") then
+				return require(assets[1]);
+			end
+		end)
+		if success then
+			if type(package) == "function" or type(package) == "string" or type(package) == "table" then
+				packages[name] = id;
+				warn("Saved " .. id .. " as ".. name);
+				savep()
+			end
+		else
+			warn(package)
+		end
+	else
+		warn("To save package, arguments must be the asset id and the name to set it to")
+	end
+end
+
+function getpackages()
+	return packages;
+end
+
+function removepackage(name)
+	if packages[name] then
+		packages[name] = nil;
+		savep()
+	end
+end
+
+savep();
+
+-- Loadstring toggle --
+-----------------------
+
+function enableLoadstring()
+	_G.LoadstringEnabled = true
+end
+function disableLoadstring()
+	_G.LoadstringEnabled = false;
+end
+
+-- AutoOpen --
+--------------
+
+function toggleOffautoOpen()
+	plugin:SetSetting("autoOpen",false)
+end
+function toggleOnautoOpen()
+	plugin:SetSetting("autoOpen",true)
+end
+
+local autoOpen = plugin:GetSetting("autoOpen")
+if autoOpen == nil then
+	plugin:SetSetting("autoOpen",true);
+	autoOpen = true;
+end
+
+
+
+tabs = {}; -- tabs
+local function createtab(run)
+	return { -- tab format
+		script = run.script;
+		disable = run.disable;
+		enable = run.enable;
+		run = function()
+			run:run();
+		end,
+	}
+end
+function tab()
+	local modules = modules:Clone();
+	modules.Parent = script.Parent.Copies;
+	local run = require(modules.run);
+	local cmds = require(modules.sourcecmd);
+	local getpath = require(modules.getpath);
+	local customs = require(modules.customs)
+
+	local tutorial = Instance.new("Script",selection)
+	tutorial.Name = "Tutorial";
+	tutorial.Source = customs.getComments();
+
+	-- source command stuff --
+	do
+		cmds:addtocmds("\\\\return",function(scriptcs,source, add, setLine)
+			if scriptcs == run.script then
+				game:GetService("ChangeHistoryService"):SetWaypoint("cmdscript")
+				scriptEditorService:UpdateSourceAsync(scriptcs,function() return add end);
+				game:GetService("ChangeHistoryService"):SetWaypoint("cmdscript2")
+				wait()
+				setLine();
+				run:run();
+			end
+		end)
+		cmds:addtocmds("\\\\select\(\)",function(script, source, add, setLine)
+			if run.script == script then
+				local selection = game:GetService("Selection"):Get();
+				local index = 0;
+				local newsource = source:gsub("\\\\select%(?%)?",function()
+					index += 1;
+					local object = selection[index];
+					return getpath.GetPath(object);
+				end)
+				scriptEditorService:UpdateSourceAsync(script,function() return newsource end);
+				setLine();
+			end
+		end)
+		cmds:addtocmds("\\\\export",function(script, source, add, setLine)
+			if script == run.script then
+				scriptEditorService:UpdateSourceAsync(script,function() return add end);
+				local lastselection = selection:Get()
+				local lastname = run.script.Name;
+				run.script.Name = "ExportedScript";
+				selection:Set{run.script};
+				plugin:PromptSaveSelection();
+				run.script.Name = lastname;
+				selection:Set(lastselection);
+			end
+		end)
+		cmds:addtocmds("\\\\import",function(script, source, add, setLine)
+			if script == run.script then
+				scriptEditorService:UpdateSourceAsync(script,function() return add end);
+				local file = studioService:PromptImportFile({"lua"});
+				if file then
+					local contents = file:GetBinaryContents();
+					scriptEditorService:UpdateSourceAsync(script,function() return contents end);
+				end
+			end
+		end)
+		cmds:addtocmds("\\\\help",function(script, source, add, setLine)
+			if script == run.script then
+				scriptEditorService:UpdateSourceAsync(script,function() return add end);
+
+				tutorial.Source = customs.getComments();
+				scriptEditorService:OpenScriptDocumentAsync(tutorial);
+			end
+		end)
+	end
+	
+	scriptEditorService:OpenScriptDocumentAsync(run.script);
+	table.insert(tabs,createtab(run));
+	run.script.Name = "@" .. #tabs;
+end
+
+local opened = false;
+
+local function getIJfromEnd(text, match)
+	local t = text;
+	match = (match:gsub("[%.%%%^%$%+%-%(%)%[%]%!]",function(c)
+		return "%"..c
+	end))
+	repeat wait() 
+		local i,j = t:find(`({match})$`)
+		if i then
+			return i,j
+		else
+			t = t:sub(1,-2);
+		end
+	until #t == 0
+	return nil;
+end
+local function getNewCursor(lineNumber, newText, newSource, lastCursor)
+	local line : string = newSource:split("\n")[lineNumber];
+	local _,cursor = getIJfromEnd(line,newText);
+	return cursor+1;
+end
+
+function start()
+	local modules = modules:Clone();
+	modules.Parent = script.Parent.Copies;
+
+	local run = require(modules.run);
+	local cmds = require(modules.sourcecmd);
+	local getpath = require(modules.getpath);
+	local customs = require(modules.customs)
+
+	cmdScript = run
+
+	task.spawn(require(modules.http)); -- load httpservice
+
+	
+	local tutorial = Instance.new("Script",selection)
+	tutorial.Name = "Tutorial";
+	tutorial.Source = customs.getComments();
+
+	executebutton.ClickableWhenViewportHidden = true;
+	openbutton.ClickableWhenViewportHidden = true;
+	
+	-- source command stuff --
+	task.spawn(function()
+		cmds:addtocmds("\\\\return",function(scriptcs,source,add, setLine)
+			if scriptcs == run.script then
+				game:GetService("ChangeHistoryService"):SetWaypoint("cmdscript")
+				scriptEditorService:UpdateSourceAsync(scriptcs,function() return add end);
+				game:GetService("ChangeHistoryService"):SetWaypoint("cmdscript2")
+				wait()
+				run:run();
+				setLine();
+			end
+		end)
+		cmds:addtocmds("\\\\select\(\)",function(script, source, add, setLine, document)
+			if run.script == script then
+				local sus,err  =  pcall(function()
+					local selection = game:GetService("Selection"):Get();
+					local index = 0;
+					local lastPath;
+					local newsource = source:gsub("\\\\select%(?%)?",function()
+						index += 1;
+						local object = selection[index];
+						lastPath = getpath.GetPath(object);
+						return lastPath
+					end)
+					if lastPath then
+						local lastLine, lastCursor = document:GetSelectionStart()
+
+						scriptEditorService:UpdateSourceAsync(script,function() return newsource end);
+
+						local newCursor = getNewCursor(lastLine,lastPath,newsource, lastCursor);
+						document:ForceSetSelectionAsync(lastLine,newCursor,lastLine,newCursor);
+					end
+				end)
+			elseif run.script == cmdScript then
+				local sus,err  =  pcall(function()
+					local selection = game:GetService("Selection"):Get();
+					local index = 0;
+					local lastPath;
+					local newsource = source:gsub("\\\\select%(?%)?",function()
+						index += 1;
+						local object = selection[index];
+						lastPath = getpath.ScriptCodePath(script,object)
+						return lastPath
+					end)
+					if lastPath then
+						local lastLine, lastCursor = document:GetSelectionStart()
+
+						scriptEditorService:UpdateSourceAsync(script,function() return newsource end);
+
+						local newCursor = getNewCursor(lastLine,lastPath,newsource);
+						document:ForceSetSelectionAsync(lastLine,newCursor,lastLine,newCursor);
+					end
+				end)
+			end
+		end)
+		cmds:addtocmds("\\\\export",function(script, source, add, setLine)
+			if script == run.script then
+				scriptEditorService:UpdateSourceAsync(script,function() return add end);
+				local lastselection = selection:Get()
+				local lastname = run.script.Name;
+				run.script.Name = "ExportedScript";
+				selection:Set{run.script};
+				plugin:PromptSaveSelection();
+				run.script.Name = lastname;
+				selection:Set(lastselection);
+			end
+		end)
+		cmds:addtocmds("\\\\import",function(script, source, add, setLine, document)
+			if script == run.script then
+				scriptEditorService:UpdateSourceAsync(script,function() return add end);
+				local file = studioService:PromptImportFile({"lua"});
+				if file then
+					local contents = file:GetBinaryContents();
+					scriptEditorService:UpdateSourceAsync(script,function() return contents end);
+					document:ForceSetSelectionAsync(1,1,1,1);
+				end
+			end
+		end)
+		cmds:addtocmds("\\\\help",function(script, source, add, setLine)
+			if script == run.script then
+				scriptEditorService:UpdateSourceAsync(script,function() return add end);
+
+				tutorial.Source = customs.getComments();
+				scriptEditorService:OpenScriptDocumentAsync(tutorial);
+			end
+		end)
+	end)
+	
+	task.spawn(function() -- last edit auto open;
+		local lastedit;
+
+		run.script.Name = "@start";
+		for i,v in next, run.script.Parent:GetChildren() do
+			if v.Name == run.script.Name and v ~= run.script then
+				if #v.Source ~= 0 then
+					lastedit = v.Source;
+				end
+				v:Destroy();
+			elseif v:IsA("LuaSourceContainer") and v.Name:match("@%d+") then
+				v:Destroy();
+			end
+		end
+		if lastedit and not lastedit:match("%-%-Last edit found") then
+			run.script.Source = "--Last edit found \n" ..lastedit;
+			if autoOpen == true then
+				pcall(function()
+					scriptEditorService:OpenScriptDocumentAsync(run.script);
+				end)
+			end
+		end
+		if opened then
+			if autoOpen == true then
+				pcall(function()
+					scriptEditorService:OpenScriptDocumentAsync(run.script);
+				end)
+			end
+		end
+	end)
+	
+	table.insert(tabs, 1, createtab(run));
+end
+
+-- Terminal --
+--------------
+
+do
+	local terminalGui = getTerminal();
+
+	function help()
+		warn(customs.getTerminalHelp())
+	end
+	
+	for i,v in next, coreGui:GetChildren() do
+		if v.Name == "Terminal" then
+			v:Destroy();
+		end
+	end
+
+	terminal.Click:Connect(function()
+		if players.LocalPlayer and game["Run Service"]:IsRunning() then
+			warn("Terminal cannot be used in the client!")
+		else
+			terminalGui.Enabled = not terminalGui.Enabled;
+		end
+	end)
+	terminalGui:WaitForChild("Frame"):WaitForChild("TextBox").FocusLost:Connect(function(enter)
+		if enter then
+			local text = terminalGui.Frame.TextBox.Text;
+			terminalGui.Frame.TextBox.TextEditable = false;
+			terminalGui.Frame.TextBox.Text = "...";
+			
+			local sus,err = pcall(loadstring(text))
+			task.wait(0.1)
+			terminalGui.Frame.TextBox.Text = "";
+			terminalGui.Frame.TextBox.TextEditable = true;
+			if not sus then
+				warn(string.format("Terminal error : %s", err));
+			end
+		end
+	end)
+	
+	terminalGui.Parent = coreGui
+	terminalGui.Enabled = false;
+end
+reload(); -- Disable all running "sourcecmds" modules because they don't disappear when you change the plugin in-studio
+-- Everything is in globals because thats the stuff used for the terminal
+
+task.wait();
+_G.ticket = nil;
+pcall(start);
+opened = true;
+enableLoadstring();
+
+openbutton.Click:Connect(function()
+	if cmdScript then
+		scriptEditorService:OpenScriptDocumentAsync(cmdScript.script);
+	end
+end)
+executebutton.Click:Connect(function()
+	if cmdScript then
+		cmdScript:run();
+	end
+end)]]></ProtectedString>
+				<int64 name="SourceAssetId">-1</int64>
+				<BinaryString name="Tags"></BinaryString>
+			</Properties>
+		</Item>
+		<Item class="Folder" referent="RBX6A52B9A77AF24C6E9814A696E0D2E1B7">
+			<Properties>
+				<BinaryString name="AttributesSerialize"></BinaryString>
+				<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+				<bool name="DefinesCapabilities">false</bool>
+				<string name="Name">Copies</string>
+				<int64 name="SourceAssetId">-1</int64>
+				<BinaryString name="Tags"></BinaryString>
+			</Properties>
+		</Item>
+		<Item class="ModuleScript" referent="RBX42C3B10DBEF24C0CACC28C68679B5CF0">
+			<Properties>
+				<BinaryString name="AttributesSerialize"></BinaryString>
+				<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+				<bool name="DefinesCapabilities">false</bool>
+				<Content name="LinkedSource"><null></null></Content>
+				<string name="Name">getTerminal</string>
+				<string name="ScriptGuid">{49D5BE74-D192-4394-943D-CAEE8FC4FB12}</string>
+				<ProtectedString name="Source"><![CDATA[-- absolute chaos
+return function()
+	local Terminal = Instance.new("ScreenGui")
+	Terminal.Name = "Terminal"
+	Terminal.Enabled = false
+
+	local Frame = Instance.new("Frame")
+	Frame.Active = true
+	Frame.Size = UDim2.new(0.41, 0.00, 0.48, 0.00)
+	Frame.BorderColor3 = Color3.new(0.00, 0.00, 0.00)
+	Frame.Position = UDim2.new(-0.00, 0.00, 0.00, 0.00)
+	Frame.BorderSizePixel = 0
+	Frame.BackgroundColor3 = Color3.new(0.01, 0.01, 0.01)
+	Frame.Parent = Terminal
+	Frame.Draggable = true;
+	
+	local UIAspectRatioConstraint = Instance.new("UIAspectRatioConstraint")
+	UIAspectRatioConstraint.AspectRatio = 1.777777910232544
+	UIAspectRatioConstraint.Parent = Frame
+
+	local TextLabel = Instance.new("TextLabel")
+	TextLabel.TextWrapped = true
+	TextLabel.BorderSizePixel = 0
+	TextLabel.TextScaled = true
+	TextLabel.BackgroundColor3 = Color3.new(1.00, 1.00, 1.00)
+	TextLabel.FontFace = Font.new("rbxasset://fonts/families/RobotoMono.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
+	TextLabel.TextXAlignment = Enum.TextXAlignment.Left
+	TextLabel.TextSize = 18
+	TextLabel.Size = UDim2.new(0.38, 0.00, 0.07, 0.00)
+	TextLabel.BorderColor3 = Color3.new(0.00, 0.00, 0.00)
+	TextLabel.Text = "Terminal"
+	TextLabel.TextColor3 = Color3.new(0.86, 0.86, 0.86)
+	TextLabel.BackgroundTransparency = 1
+	TextLabel.Position = UDim2.new(0.01, 0.00, 0.03, 0.00)
+	TextLabel.Parent = Frame
+
+	local UITextSizeConstraint = Instance.new("UITextSizeConstraint")
+	UITextSizeConstraint.MaxTextSize = 18
+	UITextSizeConstraint.Parent = TextLabel
+
+	local TextLabel_1 = Instance.new("TextLabel")
+	TextLabel_1.TextWrapped = true
+	TextLabel_1.BorderSizePixel = 0
+	TextLabel_1.TextScaled = true
+	TextLabel_1.BackgroundColor3 = Color3.new(1.00, 1.00, 1.00)
+	TextLabel_1.FontFace = Font.new("rbxasset://fonts/families/RobotoMono.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
+	TextLabel_1.TextXAlignment = Enum.TextXAlignment.Left
+	TextLabel_1.TextSize = 18
+	TextLabel_1.Size = UDim2.new(0.84, 0.00, 0.07, 0.00)
+	TextLabel_1.BorderColor3 = Color3.new(0.00, 0.00, 0.00)
+	TextLabel_1.Text = "This is a direct edit of the actual plugin"
+	TextLabel_1.TextColor3 = Color3.new(0.86, 0.86, 0.86)
+	TextLabel_1.BackgroundTransparency = 1
+	TextLabel_1.Position = UDim2.new(0.01, 0.00, 0.14, 0.00)
+	TextLabel_1.Parent = Frame
+
+	local UITextSizeConstraint_1 = Instance.new("UITextSizeConstraint")
+	UITextSizeConstraint_1.MaxTextSize = 18
+	UITextSizeConstraint_1.Parent = TextLabel_1
+
+	local TextLabel_1 = Instance.new("TextLabel")
+	TextLabel_1.TextWrapped = true
+	TextLabel_1.BorderSizePixel = 0
+	TextLabel_1.TextScaled = true
+	TextLabel_1.BackgroundColor3 = Color3.new(1.00, 1.00, 1.00)
+	TextLabel_1.FontFace = Font.new("rbxasset://fonts/families/RobotoMono.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
+	TextLabel_1.TextXAlignment = Enum.TextXAlignment.Left
+	TextLabel_1.TextSize = 18
+	TextLabel_1.Size = UDim2.new(0.99, 0.00, 0.07, 0.00)
+	TextLabel_1.BorderColor3 = Color3.new(0.00, 0.00, 0.00)
+	TextLabel_1.Text = "Do not mess anything up, this is here for debugging"
+	TextLabel_1.TextColor3 = Color3.new(0.86, 0.86, 0.86)
+	TextLabel_1.BackgroundTransparency = 1
+	TextLabel_1.Position = UDim2.new(0.01, 0.00, 0.21, 0.00)
+	TextLabel_1.Parent = Frame
+
+	local UITextSizeConstraint_1 = Instance.new("UITextSizeConstraint")
+	UITextSizeConstraint_1.MaxTextSize = 18
+	UITextSizeConstraint_1.Parent = TextLabel_1
+
+	local TextBox = Instance.new("TextBox")
+	TextBox.TextWrapped = true
+	TextBox.BorderSizePixel = 0
+	TextBox.TextScaled = true
+	TextBox.BackgroundColor3 = Color3.new(0.00, 0.00, 0.00)
+	TextBox.FontFace = Font.new("rbxasset://fonts/families/RobotoMono.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+	TextBox.TextSize = 15
+	TextBox.Size = UDim2.new(0.94, 0.00, 0.08, 0.00)
+	TextBox.TextColor3 = Color3.new(1.00, 1.00, 1.00)
+	TextBox.BorderColor3 = Color3.new(0.00, 0.00, 0.00)
+	TextBox.Text = ""
+	TextBox.TextXAlignment = Enum.TextXAlignment.Left
+	TextBox.Position = UDim2.new(0.06, 0.00, 0.87, 0.00)
+	TextBox.Parent = Frame
+
+	local TextLabel_1 = Instance.new("TextLabel")
+	TextLabel_1.TextWrapped = true
+	TextLabel_1.BorderSizePixel = 0
+	TextLabel_1.TextScaled = true
+	TextLabel_1.BackgroundColor3 = Color3.new(1.00, 1.00, 1.00)
+	TextLabel_1.FontFace = Font.new("rbxasset://fonts/families/RobotoMono.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
+	TextLabel_1.TextSize = 18
+	TextLabel_1.Size = UDim2.new(0.00, 28.00, 0.00, 22.00)
+	TextLabel_1.BorderColor3 = Color3.new(0.00, 0.00, 0.00)
+	TextLabel_1.Text = "<"
+	TextLabel_1.TextColor3 = Color3.new(0.26, 0.26, 0.26)
+	TextLabel_1.BackgroundTransparency = 1
+	TextLabel_1.Position = UDim2.new(-0.06, 0.00, 0.04, -1.00)
+	TextLabel_1.Parent = TextBox
+
+	local UITextSizeConstraint_1 = Instance.new("UITextSizeConstraint")
+	UITextSizeConstraint_1.MaxTextSize = 15
+	UITextSizeConstraint_1.Parent = TextBox
+
+
+	return Terminal;
+end]]></ProtectedString>
+				<int64 name="SourceAssetId">-1</int64>
+				<BinaryString name="Tags"></BinaryString>
+			</Properties>
+		</Item>
+	</Item>
+</roblox>
